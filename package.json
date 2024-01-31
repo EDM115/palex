@@ -1,0 +1,60 @@
+{
+  "name": "palex",
+  "version": "0.1.0",
+  "description": "Simple package to help you create color palettes",
+  "author": "EDM115 <dev@edm115.eu.org> (https://edm115.dev)",
+  "homepage": "https://github.com/EDM115/palex",
+  "funding": [
+    {
+      "type": "paypal",
+      "url": "https://www.paypal.me/8EDM115"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://www.buymeacoffee.com/edm115"
+    },
+    {
+      "type": "crypto",
+      "url": "https://edm115.shadd.eu.org/"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/EDM115"
+    },
+    {
+      "type": "telegram",
+      "url": "https://t.me/EDM115bots/698"
+    }
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EDM115/palex.git"
+  },
+  "keywords": [
+    "color",
+    "palette",
+    "generator"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/EDM115/palex/issues",
+    "email": "palex@edm115.eu.org"
+  },
+  "dependencies": {
+    "chroma-js": "^2.4.2",
+    "color-blind": "^0.1.3"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "vite": "^5.0.12",
+    "vue": "^3.4.15"
+  },
+  "bundleDependencies": [
+    "chroma-js",
+    "color-blind"
+  ]
+}
