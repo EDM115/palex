@@ -4,6 +4,7 @@
   "description": "Simple package to help you create color palettes",
   "author": "EDM115 <dev@edm115.eu.org> (https://edm115.dev)",
   "homepage": "https://github.com/EDM115/palex",
+  "type": "module",
   "funding": [
     {
       "type": "paypal",
@@ -26,11 +27,17 @@
       "url": "https://t.me/EDM115bots/698"
     }
   ],
-  "main": "src/index.js",
+  "main": "dist/palex.cjs.js",
+  "module": "dist/palex.esm.js",
+  "files": [
+    "/dist",
+    "/src",
+    "/package.json",
+    "/README.md"
+  ],
   "scripts": {
-    "test": "vite",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
-    "analyze": "cross-env ANALYZE=true vite build"
+    "build": "rollup -c",
+    "test": "vite"
   },
   "repository": {
     "type": "git",
@@ -51,8 +58,14 @@
     "color-blind": "^0.1.3"
   },
   "devDependencies": {
+    "@babel/core": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
     "@vitejs/plugin-vue": "^5.0.3",
     "cross-env": "^7.0.3",
+    "rollup": "^4.10.0",
     "rollup-plugin-visualizer": "^5.12.0",
     "vite": "^5.0.12",
     "vite-plugin-commonjs": "^0.10.1",

@@ -1,52 +1,86 @@
-const blinder = require('color-blind');
-import chroma from "chroma-js";
+import blinder from 'color-blind'
+import chroma from 'chroma-js'
 
-/**
- * Generates a color palette based on the specified type and number of colors.
- *
- * @param {string} type - The type of color palette to generate. Possible values are 'Qualitative', 'Divergente', and 'Sequentielle'.
- * @param {string} [set='Set3'] - The color set to use for qualitative palettes. Defaults to 'Set3'. Possible values are 'Set1', 'Set2', 'Set3', 'Dark2', 'Paired', 'Accent', 'Pastel1', 'Pastel2', and 'HCL'.
- * @param {number} [numColors=10] - The number of colors to include in the palette. Defaults to 10.
- * @returns {Array<string>} - An array of color values representing the generated palette.
- */
-function generatePalette(type, set = 'Set3', numColors = 10) {
-    let scale
-    const vuetifyColors = inject('vuetify').theme.current.value.colors
-    const paletteSets = ['Set1', 'Set2', 'Set3', 'Dark2', 'Paired', 'Accent', 'Pastel1', 'Pastel2', 'HCL']
-    if (!set || !paletteSets[set]) set = 'Set3'
-    switch (type) {
-        case 'Qualitative':
-        scale = chroma.scale(set).colors(numColors)
-            break
-        case 'Divergente':
-            scale = chroma.scale([vuetifyColors.primary, vuetifyColors.success, vuetifyColors.accent]).mode('lch').colors(numColors)
-        break
-        case 'Sequentielle':
-            scale = chroma.scale([vuetifyColors.background, vuetifyColors.primary]).mode('lch').colors(numColors)
-            break
-        default:
-        scale = chroma.scale(set).colors(numColors)
+/*
+sources :
+- https://loading.io/color/feature/
+- https://github.com/Fooidge/PleaseJS?tab=readme-ov-file#make_color-options
+- https://gka.github.io/palettes/#/10|d|00429d,96ffea,ffffe0|ffffe0,ff005e,93003a|1|1
+- https://gka.github.io/chroma.js/
+*/
+
+function sanitizeInput(input, mode = 'chroma') {
+    // The input can be several things, so we need to sanitize it
+    // Case 1 : A palette string. ex : 'Set3'
+    // Case 2 : A color string. ex : '#FF0000', 'rgb(255,0,0)', 'red', 'FF0', '#F00', ...
+    // Case 3 : A colors string. ex : 'fff, 000', '#F00, rgb(0,255,0), blue, #00F', ...
+    // Case 4 : An array containing any of the above, can be mixed
+
+    // Case 1
+    if (typeof input === 'string' && input in chroma.brewer) {
+        return input
     }
-    return scale
+    // Case 2
+    if (typeof input === 'string' && chroma.valid(input)) {
+        return mode === 'chroma' ? chroma(input) : chroma(input).hex()
+    }
+    // Case 3
+    if (typeof input === 'string' && input.includes(',')) {
+        const colors = []
+        let buffer = ''
+        let inParentheses = false
+
+        for (let i = 0; i < input.length; i++) {
+            const char = input[i]
+            if (char === '(') inParentheses = true
+            if (char === ')') inParentheses = false
+
+            if (char === ',' && !inParentheses) {
+                if (buffer.trim()) {
+                    let trimmedBuffer = buffer.trim()
+                    if (trimmedBuffer.startsWith('"') && trimmedBuffer.endsWith('"')) {
+                        trimmedBuffer = trimmedBuffer.substring(1, trimmedBuffer.length - 1)
+                    }
+                    colors.push(trimmedBuffer)
+                    buffer = ''
+                }
+            } else {
+                buffer += char
+            }
+        }
+
+        if (buffer.trim()) {
+            let trimmedBuffer = buffer.trim()
+            if (trimmedBuffer.startsWith('"') && trimmedBuffer.endsWith('"')) {
+                trimmedBuffer = trimmedBuffer.substring(1, trimmedBuffer.length - 1)
+            }
+            colors.push(trimmedBuffer)
+        }
+
+        const validColors = colors.filter(color => color && chroma.valid(color))
+        return validColors.map(color => sanitizeInput(color, mode))
+    }
+    // Case 4
+    if (Array.isArray(input)) {
+        const flatArray = [];
+        input.forEach(color => {
+        const sanitizedColor = sanitizeInput(color, mode)
+            if (Array.isArray(sanitizedColor)) {
+                flatArray.push(...sanitizedColor)
+            } else if (sanitizedColor) {
+                flatArray.push(sanitizedColor)
+            }
+        })
+        return flatArray
+    }
+    return []
 }
 
-/**
- * Generates a color palette based on the specified type and number of colors.
- *
- * @param {string} [colorscheme] - The colorscheme object to use. Contains both the type (qualitative or diverging) and the name of the colorscheme to use.
- * @param {number} [numColors=10] - The number of colors to include in the palette. Defaults to 10.
- * @returns {Array<string>} - An array of color values representing the generated palette.
- */
-function generatePalette2(colorscheme, numColors = 10) {
-    let set
-    if (colorscheme.type === 'qualitative') {
-        const paletteSets = ['Set1', 'Set2', 'Set3', 'Dark2', 'Paired', 'Accent', 'Pastel1', 'Pastel2']
-        set = paletteSets.includes(colorscheme.qualitativeName) ? colorscheme.qualitativeName : 'Dark2'
-    } else if (colorscheme.type === 'diverging') {
-        const paletteSets = ['BrBG', 'PRGn', 'PiYG', 'PuOr', 'RdBu', 'RdGy', 'RdYlBu', 'RdYlGn', 'Spectral']
-        set = paletteSets.includes(colorscheme.divergingName) ? colorscheme.divergingName : 'RdYlGn'
-    }
-    return chroma.scale(set).mode('lch').colors(numColors)
+function generatePaletteFromBrewer(input, numColors) {
+    if (numColors < 1) return []
+    const brewer = sanitizeInput(input)
+    if (brewer.length === 0) return []
+    return chroma.scale(brewer).mode('lch').colors(numColors)
 }
 
 function getColors(colorscheme, size, vuetifyColors = null) {
@@ -112,13 +146,6 @@ function generateDynamicPalette(baseColors, paletteType, size) {
     return colors
 }
 
-/**
- * Adjusts a color for color blindness.
- * Totally not perfect yet, currently just shifts the hue and reduces saturation.
- *
- * @param {string} colorHex - The hexadecimal representation of the color.
- * @returns {string} The adjusted color in hexadecimal format.
- */
 function adjustForColorBlindness(colorHex) {
     let color = chroma(colorHex)
     // Example adjustment: shift hue and reduce saturation
@@ -126,14 +153,6 @@ function adjustForColorBlindness(colorHex) {
     return color.hex()
 }
 
-/**
- * Generates a list of color hues based on a given base color.
- *
- * @param {string} colorHex - The hexadecimal representation of the base color.
- * @param {boolean} [colorBlindFriendly=false] - Indicates whether the generated colors should be adjusted for color blindness.
- * @param {number} [numColors=10] - The number of color hues to generate.
- * @returns {string[]} An array of color hues in hexadecimal format.
- */
 function generateHuesFromColor(colorHex, colorBlindFriendly = false, numColors = 10) {
     const baseColor = chroma(colorHex)
     let colors = [baseColor.hex()]
@@ -149,13 +168,6 @@ function generateHuesFromColor(colorHex, colorBlindFriendly = false, numColors =
     return colors
 }
 
-/**
- * Generates a list of color hues based on a given base color.
- *
- * @param {string} colorHex - The hexadecimal representation of the base color.
- * @param {number} [numColors=10] - The number of color hues to generate.
- * @returns {string[]} An array of color hues in hexadecimal format.
- */
 function generateHuesFromColor2(colorHex, numColors = 10) {
     const baseColor = chroma(colorHex)
     const colors = [baseColor.hex()]
@@ -167,14 +179,6 @@ function generateHuesFromColor2(colorHex, numColors = 10) {
     return colors
 }
 
-/**
- * Generates a color palette based on a given base color.
- *
- * @param {string} colorHex - The base color in hexadecimal format.
- * @param {boolean} [colorBlindFriendly=false] - Indicates whether the palette should be adjusted for color blindness.
- * @param {number} [numColors=10] - The number of colors to generate in the palette.
- * @returns {string[]} An array of colors in hexadecimal format representing the generated palette.
- */
 function generatePaletteFromColor(colorHex, colorBlindFriendly = false, numColors = 10) {
     const baseColor = chroma(colorHex)
     let colors = [baseColor.hex()]
@@ -203,12 +207,6 @@ function generatePaletteFromColor(colorHex, colorBlindFriendly = false, numColor
     return colors
 }
 
-/**
- * Simulates color blindness for a given color.
- *
- * @param {string} colorHex - The hexadecimal representation of the color.
- * @returns {Array} - An array of color hex values representing the simulated color blindness versions of the input color.
- */
 function simulateColorBlindness(colorHex) {
     const normalColor = chroma(colorHex).hex()
     const cb = [normalColor]
@@ -222,14 +220,6 @@ function simulateColorBlindness(colorHex) {
     return cb
 }
 
-/**
- * Beautifies a palette of colors using chroma-js library.
- * Source for the ideas : https://gka.github.io/palettes/#/9|s|00429d,96ffea,ffffe0|ffffe0,ff005e,93003a|1|1
- * Might look further into this "configuration"
- *
- * @param {Array} colors - The array of colors to be beautified.
- * @returns {Array} - The beautified array of colors.
- */
 function beautifyPalette(colors) {
     const bezier = chroma.bezier(colors)
     const bezierColors = bezier.scale().correctLightness().colors(colors.length)
@@ -237,14 +227,6 @@ function beautifyPalette(colors) {
     return bezierColors
 }
 
-/**
- * Returns a golden color based on the input color.
- * The idea of "golden color" is taken from the golden ratio.
- * As seen on pleasejs : https://github.com/Fooidge/PleaseJS?tab=readme-ov-file#make_color-options
- *
- * @param {string} color - The input color in any valid CSS color format.
- * @returns {string} - The golden color in hexadecimal format.
- */
 function getGoldenColor(color) {
     const goldenRatio = 0.618033988749895
     const hue = chroma(color).hsl()[0]
@@ -256,24 +238,14 @@ function generateGreyscale(start, end, steps) {
     const greyscale = []
     for (let i = start; i <= end; i++) {
         const lightness = Math.round((i / steps) * 255)
-        greyscale.push(`rgb(${lightness},${lightness},${lightness})`)
+        greyscale.push(chroma(`rgb(${lightness},${lightness},${lightness})`).hex())
     }
     return greyscale
-  }
+}
 
-module.exports = {
+export {
     blinder,
     chroma,
-    generatePalette,
-    generatePalette2,
-    getColors,
-    generateDynamicPalette,
-    adjustForColorBlindness,
-    getGoldenColor,
-    generateHuesFromColor,
-    generateHuesFromColor2,
-    generatePaletteFromColor,
-    simulateColorBlindness,
-    beautifyPalette,
-    generateGreyscale
-};
+    sanitizeInput,
+    generatePaletteFromBrewer
+}
