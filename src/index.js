@@ -9,7 +9,7 @@ sources :
 - https://gka.github.io/chroma.js/
 */
 
-function sanitizeInput(input, mode = 'chroma') {
+function sanitizeInput(input, mode = 'hex') {
     // The input can be several things, so we need to sanitize it
     // Case 1 : A palette string. ex : 'Set3'
     // Case 2 : A color string. ex : '#FF0000', 'rgb(255,0,0)', 'red', 'FF0', '#F00', ...
@@ -83,128 +83,67 @@ function generatePaletteFromBrewer(input, numColors) {
     return chroma.scale(brewer).mode('lch').colors(numColors)
 }
 
-function getColors(colorscheme, size, vuetifyColors = null) {
-    if (colorscheme.type === 'vuetify-theme' && vuetifyColors) {
-        const baseColors = [vuetifyColors.primary, vuetifyColors.secondary]
-        if (colorscheme.useAccent) {
-            baseColors.push(vuetifyColors.accent)
-        }
-    
-        if (colorscheme.generatePalette) {
-            return generateDynamicPalette(baseColors, colorscheme.paletteType, size)
-        } else {
-            return baseColors.slice(0, size)
-        }
-    }
-  
-    const colors = generatePalette(colorscheme, size)
-    if (colorscheme.reverse) colors.reverse()
-    const greyscaleColors = generateGreyscale(0, size - colors.length - 1, size - colors.length)
-    return colors.concat(greyscaleColors)
-}
+function adjustForColorBlindness(palette) {
+    // How it works :
+    // 1. Grab the palette (array of hex values)
+    // 2. Make 3 new arrays, each of them mapping the original palette to a new one, simulating the 3 types of color blindness (uses blinder)
+    // 3. For each array, compare all the colors to each other. If 2 colors are too similar, shift one of them to a the closer but not similar color. Repeat the process for each array until the said array is "fixed"
+    // 4. Return 1 array that computes the 3 other ones into a single one, by taking the best color for each index
+    // 5. Eventually recurse the process until the palette is fixed
+    // 6. Return the fixed palette
 
-function generateDynamicPalette(baseColors, paletteType, size) {
-    let colors = []
-    if (paletteType === 'hues') {
-        const hues = []
-        const effectiveSize = Math.min(size, 20)
-        const length = Math.floor(effectiveSize / baseColors.length)
-        baseColors.forEach(baseColor => {
-            hues.push(generateHuesFromColor(baseColor, length + 1))
+    palette = sanitizeInput(palette, 'hex')
+    const types = ['protanopia', 'deuteranopia', 'tritanopia']
+    const adjustedPalettes = types.map(type => palette.map(color => blinder[type](color)))
+
+    const isColorTooSimilar = (color1, color2) => {
+        // Calculate the color difference using CMC l:c (1984), see https://en.wikipedia.org/wiki/Color_difference#CMC_l:c_.281984.29
+        const threshold = 7 // This threshold can be adjusted based on how you define "too similar". 7 seemed like a good choice based on this : https://www.vis4.net/chromajs/#chroma-deltae
+        const deltaE = chroma.deltaE(color1, color2)
+        return deltaE < threshold
+    }
+
+    const adjustColor = (originalColor, allColors) => {
+        // Adjust color based on importance: hue (75%), luminance (15%), saturation (10%)
+        let bestMatch = originalColor
+        let minDifference = Infinity
+
+        for (let hueShift = 0; hueShift < 360; hueShift += 10) {
+            let testColor = chroma(bestMatch).set('hsl.h', `+${hueShift}`)
+            let luminanceAdjustment = 0.15 * (hueShift / 360)
+            let saturationAdjustment = 0.1 * (hueShift / 360)
+            testColor = testColor.set('hsl.l', `+${luminanceAdjustment}`).set('hsl.s', `+${saturationAdjustment}`).hex()
+
+            if (!allColors.some(otherColor => isColorTooSimilar(testColor, otherColor))) {
+                const difference = chroma.deltaE(originalColor, testColor)
+                if (difference < minDifference) {
+                    minDifference = difference
+                    bestMatch = testColor
+                }
+            }
+        }
+
+        return bestMatch
+    }
+
+    const fixedPalettes = adjustedPalettes.map((palette, paletteIndex) => 
+        palette.map((color, index) => {
+            if (palette.some((otherColor, otherIndex) => index !== otherIndex && isColorTooSimilar(color, otherColor))) {
+                return adjustColor(color, palette)
+            }
+            return color // Return original if not too similar
         })
-        for (let i = 0; i < length + 1; i++) {
-            hues.forEach(hue => {
-                colors.push(hue[i])
-            })
-        }
-    } else if (paletteType === 'complementary') {
-        const generatedColors = []
-        const effectiveSize = Math.min(size, 20)
-        const length = Math.floor(effectiveSize / baseColors.length)
-        baseColors.forEach(baseColor => {
-            generatedColors.push(generatePaletteFromColor(baseColor, length + 1))
-        })
-        for (let i = 0; i < length + 1; i++) {
-            generatedColors.forEach(color => {
-                colors.push(color[i])
-            })
-        }
-    }
-  
-    colors = [...new Set(colors)]
-    if (colors.length > size) {
-        colors = colors.slice(0, size)
-    } else {
-        const numGreyscaleColors = size - colors.length
-        const start = 0
-        const end = numGreyscaleColors - 1
-        const steps = numGreyscaleColors
-        const greyscaleColors = generateGreyscale(start, end, steps)
-        colors = colors.concat(greyscaleColors)
-    }
-  
-    return colors
-}
+    )
 
-function adjustForColorBlindness(colorHex) {
-    let color = chroma(colorHex)
-    // Example adjustment: shift hue and reduce saturation
-    color = color.set('hsl.h', '+20').desaturate(0.5)
-    return color.hex()
-}
+    // Combine the fixed palettes into a single palette by choosing the best color for each index
+    const finalPalette = palette.map((originalColor, index) => {
+        const colorOptions = fixedPalettes.map(palette => palette[index])
+        const distances = colorOptions.map(color => chroma.deltaE(originalColor, color))
+        const minDistanceIndex = distances.indexOf(Math.min(...distances))
+        return colorOptions[minDistanceIndex]
+    })
 
-function generateHuesFromColor(colorHex, colorBlindFriendly = false, numColors = 10) {
-    const baseColor = chroma(colorHex)
-    let colors = [baseColor.hex()]
-    for (let i = 1; i < numColors; i++) {
-        const color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1)
-        colors.push(color.hex())
-    }
-
-    if (colorBlindFriendly) {
-        colors = colors.map(c => adjustForColorBlindness(c))
-    }
-
-    return colors
-}
-
-function generateHuesFromColor2(colorHex, numColors = 10) {
-    const baseColor = chroma(colorHex)
-    const colors = [baseColor.hex()]
-    for (let i = 1; i < numColors; i++) {
-        const color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1)
-        colors.push(color.hex())
-    }
-  
-    return colors
-}
-
-function generatePaletteFromColor(colorHex, colorBlindFriendly = false, numColors = 10) {
-    const baseColor = chroma(colorHex)
-    let colors = [baseColor.hex()]
-
-    const complementaryColor = baseColor.set('hsl.h', '+180')
-    colors.push(complementaryColor.hex())
-
-    for (let i = 1; i <= Math.floor((numColors - 2) / 2); i++) {
-        const analogousColor1 = baseColor.set('hsl.h', `+${i * 30}`)
-        const analogousColor2 = baseColor.set('hsl.h', `-${i * 30}`)
-        colors.push(analogousColor1.hex(), analogousColor2.hex())
-    }
-
-    if (colors.length < numColors) {
-        const triadicColor1 = baseColor.set('hsl.h', '+120')
-        const triadicColor2 = baseColor.set('hsl.h', '-120')
-        colors.push(triadicColor1.hex(), triadicColor2.hex())
-    }
-
-    colors = colors.slice(0, numColors)
-
-    if (colorBlindFriendly) {
-        colors = colors.map(c => adjustForColorBlindness(c))
-    }
-
-    return colors
+    return finalPalette
 }
 
 function simulateColorBlindness(colorHex) {
@@ -243,9 +182,90 @@ function generateGreyscale(start, end, steps) {
     return greyscale
 }
 
+function generateDynamicPalette(baseColors, paletteType, size) {
+    let colors = []
+    if (paletteType === 'hues') {
+        const hues = []
+        const length = Math.floor(size / baseColors.length)
+        baseColors.forEach(baseColor => {
+            hues.push(generateHuesFromColor(baseColor, length + 1))
+        })
+        for (let i = 0; i < length + 1; i++) {
+            hues.forEach(hue => {
+                colors.push(hue[i])
+            })
+        }
+    } else if (paletteType === 'complementary') {
+        const generatedColors = []
+        const length = Math.floor(size / baseColors.length)
+        baseColors.forEach(baseColor => {
+            generatedColors.push(generatePaletteFromColor(baseColor, length + 1))
+        })
+        for (let i = 0; i < length + 1; i++) {
+            generatedColors.forEach(color => {
+                colors.push(color[i])
+            })
+        }
+    }
+  
+    colors = [...new Set(colors)]
+    if (colors.length > size) {
+        colors = colors.slice(0, size)
+    } else {
+        const numGreyscaleColors = size - colors.length
+        const start = 0
+        const end = numGreyscaleColors - 1
+        const steps = numGreyscaleColors
+        const greyscaleColors = generateGreyscale(start, end, steps)
+        colors = colors.concat(greyscaleColors)
+    }
+  
+    return colors
+}
+
+function generateHuesFromColor(colorHex, numColors = 10) {
+    const baseColor = chroma(colorHex)
+    let colors = [baseColor.hex()]
+    for (let i = 1; i < numColors; i++) {
+        const color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1)
+        colors.push(color.hex())
+    }
+
+    return colors
+}
+
+function generatePaletteFromColor(colorHex, numColors = 10) {
+    const baseColor = chroma(colorHex)
+    let colors = [baseColor.hex()]
+
+    const complementaryColor = baseColor.set('hsl.h', '+180')
+    colors.push(complementaryColor.hex())
+
+    for (let i = 1; i <= Math.floor((numColors - 2) / 2); i++) {
+        const analogousColor1 = baseColor.set('hsl.h', `+${i * 30}`)
+        const analogousColor2 = baseColor.set('hsl.h', `-${i * 30}`)
+        colors.push(analogousColor1.hex(), analogousColor2.hex())
+    }
+
+    if (colors.length < numColors) {
+        const triadicColor1 = baseColor.set('hsl.h', '+120')
+        const triadicColor2 = baseColor.set('hsl.h', '-120')
+        colors.push(triadicColor1.hex(), triadicColor2.hex())
+    }
+
+    colors = colors.slice(0, numColors)
+
+    return colors
+}
+
 export {
     blinder,
     chroma,
     sanitizeInput,
-    generatePaletteFromBrewer
+    generatePaletteFromBrewer,
+    adjustForColorBlindness,
+    simulateColorBlindness,
+    beautifyPalette,
+    getGoldenColor,
+    generateGreyscale
 }
