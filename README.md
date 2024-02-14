@@ -19,3 +19,9 @@ import { generatePaletteFromBrewer } from 'palex'
 
 console.log(generatePaletteFromBrewer('Set1', 10))
 ```
+
+sources :
+- https://loading.io/color/feature/
+- https://github.com/Fooidge/PleaseJS?tab=readme-ov-file#make_color-options
+- https://gka.github.io/palettes/#/10|d|00429d,96ffea,ffffe0|ffffe0,ff005e,93003a|1|1
+- https://gka.github.io/chroma.js/
