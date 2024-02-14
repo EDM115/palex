@@ -1,5 +1,11 @@
 version = 1
 
+exclude_patterns = [
+  "dist/**",
+  "node_modules/**",
+  "test/dist/**",
+]
+
 [[analyzers]]
 name = "secrets"
 
