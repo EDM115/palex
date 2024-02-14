@@ -180,8 +180,8 @@ function adjustForColorBlindness(palette) {
   });
   return finalPalette;
 }
-function simulateColorBlindness(colorHex) {
-  var normalColor = chroma(colorHex).hex();
+function simulateColorBlindness(color) {
+  var normalColor = chroma(color).hex();
   var cb = [normalColor];
   var protanopia = blinder.protanopia(normalColor);
   var deuteranopia = blinder.deuteranopia(normalColor);
@@ -190,9 +190,10 @@ function simulateColorBlindness(colorHex) {
   cb.push(protanopia, deuteranopia, tritanopia, achromatopsia);
   return cb;
 }
-function beautifyPalette(colors) {
-  var bezier = chroma.bezier(colors);
-  var bezierColors = bezier.scale().correctLightness().colors(colors.length);
+function beautifyPalette(palette) {
+  palette = sanitizeInput(palette, 'hex');
+  var bezier = chroma.bezier(palette);
+  var bezierColors = bezier.scale().correctLightness().colors(palette.length);
   return bezierColors;
 }
 function getGoldenColor(color) {
@@ -209,5 +210,76 @@ function generateGreyscale(start, end, steps) {
   }
   return greyscale;
 }
+function generateHues(palette, numColors) {
+  palette = sanitizeInput(palette, 'hex');
+  var colors = [];
+  var hues = [];
+  var length = Math.floor(numColors / palette.length);
+  palette.forEach(function (baseColor) {
+    hues.push(generateHuesFromColor(baseColor, length + 1));
+  });
+  var _loop2 = function _loop2(i) {
+    hues.forEach(function (hue) {
+      colors.push(hue[i]);
+    });
+  };
+  for (var i = 0; i < length + 1; i++) {
+    _loop2(i);
+  }
+  colors = _toConsumableArray(new Set(colors));
+  if (colors.length > numColors) {
+    colors = colors.slice(0, numColors);
+  }
+  return colors;
+}
+function generateHuesFromColor(color, numColors) {
+  var baseColor = chroma(color);
+  var colors = [baseColor.hex()];
+  for (var i = 1; i < numColors; i++) {
+    var _color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1);
+    colors.push(_color.hex());
+  }
+  return colors;
+}
+function generateComplementaries(palette, numColors) {
+  palette = sanitizeInput(palette, 'hex');
+  var colors = [];
+  var generatedColors = [];
+  var length = Math.floor(numColors / palette.length);
+  palette.forEach(function (baseColor) {
+    generatedColors.push(generatePaletteFromColor(baseColor, length + 1));
+  });
+  var _loop3 = function _loop3(i) {
+    generatedColors.forEach(function (color) {
+      colors.push(color[i]);
+    });
+  };
+  for (var i = 0; i < length + 1; i++) {
+    _loop3(i);
+  }
+  colors = _toConsumableArray(new Set(colors));
+  if (colors.length > size) {
+    colors = colors.slice(0, numColors);
+  }
+  return colors;
+}
+function generatePaletteFromColor(color, numColors) {
+  var baseColor = chroma(color);
+  var colors = [baseColor.hex()];
+  var complementaryColor = baseColor.set('hsl.h', '+180');
+  colors.push(complementaryColor.hex());
+  for (var i = 1; i <= Math.floor((numColors - 2) / 2); i++) {
+    var analogousColor1 = baseColor.set('hsl.h', "+".concat(i * 30));
+    var analogousColor2 = baseColor.set('hsl.h', "-".concat(i * 30));
+    colors.push(analogousColor1.hex(), analogousColor2.hex());
+  }
+  if (colors.length < numColors) {
+    var triadicColor1 = baseColor.set('hsl.h', '+120');
+    var triadicColor2 = baseColor.set('hsl.h', '-120');
+    colors.push(triadicColor1.hex(), triadicColor2.hex());
+  }
+  colors = colors.slice(0, numColors);
+  return colors;
+}
 
-export { adjustForColorBlindness, beautifyPalette, generateGreyscale, generatePaletteFromBrewer, getGoldenColor, sanitizeInput, simulateColorBlindness };
+export { adjustForColorBlindness, beautifyPalette, generateComplementaries, generateGreyscale, generateHues, generateHuesFromColor, generatePaletteFromBrewer, generatePaletteFromColor, getGoldenColor, sanitizeInput, simulateColorBlindness };

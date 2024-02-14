@@ -146,8 +146,8 @@ function adjustForColorBlindness(palette) {
     return finalPalette
 }
 
-function simulateColorBlindness(colorHex) {
-    const normalColor = chroma(colorHex).hex()
+function simulateColorBlindness(color) {
+    const normalColor = chroma(color).hex()
     const cb = [normalColor]
 
     const protanopia = blinder.protanopia(normalColor)
@@ -159,9 +159,10 @@ function simulateColorBlindness(colorHex) {
     return cb
 }
 
-function beautifyPalette(colors) {
-    const bezier = chroma.bezier(colors)
-    const bezierColors = bezier.scale().correctLightness().colors(colors.length)
+function beautifyPalette(palette) {
+    palette = sanitizeInput(palette, 'hex')
+    const bezier = chroma.bezier(palette)
+    const bezierColors = bezier.scale().correctLightness().colors(palette.length)
 
     return bezierColors
 }
@@ -182,49 +183,29 @@ function generateGreyscale(start, end, steps) {
     return greyscale
 }
 
-function generateDynamicPalette(baseColors, paletteType, size) {
+function generateHues(palette, numColors) {
+    palette = sanitizeInput(palette, 'hex')
     let colors = []
-    if (paletteType === 'hues') {
-        const hues = []
-        const length = Math.floor(size / baseColors.length)
-        baseColors.forEach(baseColor => {
-            hues.push(generateHuesFromColor(baseColor, length + 1))
+    const hues = []
+    const length = Math.floor(numColors / palette.length)
+    palette.forEach(baseColor => {
+        hues.push(generateHuesFromColor(baseColor, length + 1))
+    })
+    for (let i = 0; i < length + 1; i++) {
+        hues.forEach(hue => {
+            colors.push(hue[i])
         })
-        for (let i = 0; i < length + 1; i++) {
-            hues.forEach(hue => {
-                colors.push(hue[i])
-            })
-        }
-    } else if (paletteType === 'complementary') {
-        const generatedColors = []
-        const length = Math.floor(size / baseColors.length)
-        baseColors.forEach(baseColor => {
-            generatedColors.push(generatePaletteFromColor(baseColor, length + 1))
-        })
-        for (let i = 0; i < length + 1; i++) {
-            generatedColors.forEach(color => {
-                colors.push(color[i])
-            })
-        }
     }
-  
+
     colors = [...new Set(colors)]
-    if (colors.length > size) {
-        colors = colors.slice(0, size)
-    } else {
-        const numGreyscaleColors = size - colors.length
-        const start = 0
-        const end = numGreyscaleColors - 1
-        const steps = numGreyscaleColors
-        const greyscaleColors = generateGreyscale(start, end, steps)
-        colors = colors.concat(greyscaleColors)
+    if (colors.length > numColors) {
+        colors = colors.slice(0, numColors)
     }
-  
     return colors
 }
 
-function generateHuesFromColor(colorHex, numColors = 10) {
-    const baseColor = chroma(colorHex)
+function generateHuesFromColor(color, numColors) {
+    const baseColor = chroma(color)
     let colors = [baseColor.hex()]
     for (let i = 1; i < numColors; i++) {
         const color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1)
@@ -234,8 +215,29 @@ function generateHuesFromColor(colorHex, numColors = 10) {
     return colors
 }
 
-function generatePaletteFromColor(colorHex, numColors = 10) {
-    const baseColor = chroma(colorHex)
+function generateComplementaries(palette, numColors) {
+    palette = sanitizeInput(palette, 'hex')
+    let colors = []
+    const generatedColors = []
+    const length = Math.floor(numColors / palette.length)
+    palette.forEach(baseColor => {
+        generatedColors.push(generatePaletteFromColor(baseColor, length + 1))
+    });
+    for (let i = 0; i < length + 1; i++) {
+        generatedColors.forEach(color => {
+            colors.push(color[i])
+        })
+    }
+
+    colors = [...new Set(colors)]
+    if (colors.length > size) {
+        colors = colors.slice(0, numColors)
+    }
+    return colors
+}
+
+function generatePaletteFromColor(color, numColors) {
+    const baseColor = chroma(color)
     let colors = [baseColor.hex()]
 
     const complementaryColor = baseColor.set('hsl.h', '+180')
@@ -267,5 +269,9 @@ export {
     simulateColorBlindness,
     beautifyPalette,
     getGoldenColor,
-    generateGreyscale
+    generateGreyscale,
+    generateHues,
+    generateHuesFromColor,
+    generateComplementaries,
+    generatePaletteFromColor
 }
