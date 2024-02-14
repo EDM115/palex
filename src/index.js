@@ -133,8 +133,8 @@ function adjustForColorBlindness(palette) {
 
         for (let hueShift = 0; hueShift < 360; hueShift += 10) {
             let testColor = chroma(bestMatch).set('hsl.h', `+${hueShift}`)
-            let luminanceAdjustment = 0.15 * (hueShift / 360)
-            let saturationAdjustment = 0.1 * (hueShift / 360)
+            const luminanceAdjustment = 0.15 * (hueShift / 360)
+            const saturationAdjustment = 0.1 * (hueShift / 360)
             testColor = testColor.set('hsl.l', `+${luminanceAdjustment}`).set('hsl.s', `+${saturationAdjustment}`).hex()
 
             if (!allColors.some(otherColor => isColorTooSimilar(testColor, otherColor))) {
