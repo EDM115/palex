@@ -28,8 +28,10 @@ jobs:
       - name: Handle Version for Manual Trigger
         if: github.event_name == 'workflow_dispatch'
         run: |
-          VERSION_EXISTS=$(npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version)
-          if [ "$VERSION_EXISTS" != "" ]; then
+          if ! npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version; then
+            echo "Version does not exist, proceeding with publishing."
+          else
+            echo "Version exists, bumping version."
             npm version patch -m "Bump version to %s due to existing version in registry"
             git push --follow-tags
           fi
@@ -39,10 +41,18 @@ jobs:
         run: |
           RELEASE_VERSION=$(echo ${{ github.event.release.tag_name }} | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+')
           if [ "$RELEASE_VERSION" != "" ]; then
-            npm version $RELEASE_VERSION --no-git-tag-version
+            if ! npm view $(node -p "require('./package.json').name")@$RELEASE_VERSION version; then
+              echo "Release version does not exist, setting version in package.json."
+              npm version $RELEASE_VERSION --no-git-tag-version
+            else
+              echo "Release version exists, proceeding without change."
+            fi
           else
-            VERSION_EXISTS=$(npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version)
-            if [ "$VERSION_EXISTS" != "" ]; then
+            echo "Release tag does not follow semantic versioning. Checking current package.json version."
+            if ! npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version; then
+              echo "Current version does not exist, safe to publish."
+            else
+              echo "Current version exists, bumping version."
               npm version patch -m "Bump version to %s due to existing version in registry"
               git push --follow-tags
             fi
