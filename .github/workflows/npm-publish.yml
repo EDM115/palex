@@ -1,0 +1,54 @@
+name: NPM Publish Workflow
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Handle Version for Manual Trigger
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION_EXISTS=$(npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version)
+          if [ "$VERSION_EXISTS" != "" ]; then
+            npm version patch -m "Bump version to %s due to existing version in registry"
+            git push --follow-tags
+          fi
+
+      - name: Set NPM Version for Release Trigger
+        if: github.event_name == 'release'
+        run: |
+          RELEASE_VERSION=$(echo ${{ github.event.release.tag_name }} | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$RELEASE_VERSION" != "" ]; then
+            npm version $RELEASE_VERSION --no-git-tag-version
+          else
+            VERSION_EXISTS=$(npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version)
+            if [ "$VERSION_EXISTS" != "" ]; then
+              npm version patch -m "Bump version to %s due to existing version in registry"
+              git push --follow-tags
+            fi
+          fi
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
