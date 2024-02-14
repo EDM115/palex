@@ -24,6 +24,7 @@ import {
 import { onMounted, ref } from 'vue'
 
 export default {
+    name: 'Showcase',
     setup() {
         const palettes = ref([])
 
