@@ -32,6 +32,8 @@ jobs:
             echo "Version does not exist, proceeding with publishing."
           else
             echo "Version exists, bumping version."
+            git config --global user.email "git@edm115.eu.org"
+            git config --global user.name "EDM115"
             npm version patch -m "Bump version to %s due to existing version in registry"
             git push --follow-tags
           fi
@@ -53,6 +55,8 @@ jobs:
               echo "Current version does not exist, safe to publish."
             else
               echo "Current version exists, bumping version."
+              git config --global user.email "git@edm115.eu.org"
+              git config --global user.name "EDM115"
               npm version patch -m "Bump version to %s due to existing version in registry"
               git push --follow-tags
             fi
