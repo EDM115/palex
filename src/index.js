@@ -428,7 +428,7 @@ function palex(input, type, numColors = 10, cbf = false, golden = false, grey = 
 
     if (grey) {
         if (palette.length < numColors) {
-            const numGreyscaleColors = numColors - colors.length
+            const numGreyscaleColors = numColors - palette.length
             const start = 0
             const end = numGreyscaleColors - 1
             const steps = numGreyscaleColors
