@@ -297,7 +297,7 @@ function generateHuesFromColor(color, numColors, cbf = false) {
     let colors = [baseColor.hex()]
 
     for (let i = 1; i < numColors; i++) {
-        const colorHue = baseColor.set(`hsl.l`, `*${1 + i / numColors}`).saturate(1)
+        const colorHue = baseColor.set('hsl.l', `*${1 + i / numColors}`).saturate(1)
         colors.push(colorHue.hex())
     }
 
