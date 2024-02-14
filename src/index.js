@@ -150,7 +150,7 @@ function adjustForColorBlindness(palette) {
         return bestMatch
     }
 
-    const fixedPalettes = adjustedPalettes.map((palette, paletteIndex) => 
+    const fixedPalettes = adjustedPalettes.map(palette => 
         palette.map((color, index) => {
             if (palette.some((otherColor, otherIndex) => index !== otherIndex && isColorTooSimilar(color, otherColor))) {
                 return adjustColor(color, palette)
