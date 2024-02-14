@@ -251,10 +251,16 @@ function generateHues(palette, numColors, cbf = false) {
         hues.push(generateHuesFromColor(baseColor, length + 1))
     })
 
-    for (let i = 0; i < length + 1; i++) {
+    const addColorsFromHues = (colors, hues, index) => {
         hues.forEach(hue => {
-            colors.push(hue[i])
+            if (hue[index] !== undefined) {
+                colors.push(hue[index])
+            }
         })
+    }
+
+    for (let i = 0; i < length + 1; i++) {
+        addColorsFromHues(colors, hues, i)
     }
 
     colors = [...new Set(colors)]
@@ -322,10 +328,16 @@ function generateComplementaries(palette, numColors, cbf = false) {
         generatedColors.push(generatePaletteFromColor(baseColor, length + 1))
     })
 
-    for (let i = 0; i < length + 1; i++) {
-        generatedColors.forEach(color => {
-            colors.push(color[i])
+    const addColorsFromGenerated = (colors, generatedColors, index) => {
+        generatedColors.forEach(colorSet => {
+            if (colorSet[index] !== undefined) {
+                colors.push(colorSet[index])
+            }
         })
+    }
+
+    for (let i = 0; i < length + 1; i++) {
+        addColorsFromGenerated(colors, generatedColors, i)
     }
 
     colors = [...new Set(colors)]
