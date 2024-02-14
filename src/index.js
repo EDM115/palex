@@ -150,10 +150,10 @@ function adjustForColorBlindness(palette) {
         return bestMatch
     }
 
-    const fixedPalettes = adjustedPalettes.map(palette => 
-        palette.map((color, index) => {
-            if (palette.some((otherColor, otherIndex) => index !== otherIndex && isColorTooSimilar(color, otherColor))) {
-                return adjustColor(color, palette)
+    const fixedPalettes = adjustedPalettes.map(adjustedPalette => 
+        adjustedPalette.map((color, index) => {
+            if (adjustedPalette.some((otherColor, otherIndex) => index !== otherIndex && isColorTooSimilar(color, otherColor))) {
+                return adjustColor(color, adjustedPalette)
             }
 
             return color // Return original if not too similar
@@ -162,7 +162,7 @@ function adjustForColorBlindness(palette) {
 
     // Combine the fixed palettes into a single palette by choosing the best color for each index
     const finalPalette = palette.map((originalColor, index) => {
-        const colorOptions = fixedPalettes.map(palette => palette[index])
+        const colorOptions = fixedPalettes.map(fixedPalette => fixedPalette[index])
         const distances = colorOptions.map(color => chroma.deltaE(originalColor, color))
         const minDistanceIndex = distances.indexOf(Math.min(...distances))
 
@@ -297,8 +297,8 @@ function generateHuesFromColor(color, numColors, cbf = false) {
     let colors = [baseColor.hex()]
 
     for (let i = 1; i < numColors; i++) {
-        const color = baseColor.set(`hsl.l`, `*${1 + i / numColors}`).saturate(1)
-        colors.push(color.hex())
+        const colorHue = baseColor.set(`hsl.l`, `*${1 + i / numColors}`).saturate(1)
+        colors.push(colorHue.hex())
     }
 
     if (cbf) {
