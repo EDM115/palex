@@ -3,11 +3,14 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-    base: '/test/',
+    base: '/',
     plugins: [
         vue(),
         commonjs({
-            include: ['node_modules/chroma-js/chroma.js']
+            include: [
+                'node_modules/chroma-js/chroma.js',
+                'node_modules/color-blind/lib/color-blind.js'
+            ]
         })
     ],
     server: {
@@ -20,7 +23,7 @@ export default defineConfig({
     },
     build: {
         commonjsOptions: {
-            include: [/chroma-js/]
+            include: [/chroma-js/, /color-blind/]
         }
     }
 })

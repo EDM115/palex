@@ -6,10 +6,9 @@ import chroma from 'chroma-js'
  * Sanitizes the input to ensure it is in the correct format for further processing.
  *
  * @param {string | string[]} input - The input to be sanitized. It can be a palette string, a color string, a colors string, or an array containing any of these.
- * @param {string} [mode='hex'] - The mode in which the input should be sanitized. Defaults to 'hex', can be 'chroma'.
- * @returns {string | string[]} - The sanitized input. If the input is a palette string, it is returned as is. If the input is a color string, it is converted to the specified mode. If the input is a colors string, it is split into individual colors and sanitized. If the input is an array, each element is recursively sanitized and returned as a flat array.
+ * @returns {string | string[]} - The sanitized input. If the input is a palette string, it is returned as is. If the input is a color string, it is converted to a hex value. If the input is a colors string, it is split into individual colors and sanitized. If the input is an array, each element is recursively sanitized and returned as a flat array.
  */
-function sanitizeInput(input, mode = 'hex') {
+function sanitizeInput(input) {
     // Case 1 : A palette string. ex : 'Set3'
     if (typeof input === 'string' && input.trim() in chroma.brewer) {
         return input.trim()
@@ -17,7 +16,7 @@ function sanitizeInput(input, mode = 'hex') {
 
     // Case 2 : A color string. ex : '#FF0000', 'rgb(255,0,0)', 'red', 'FF0', '#F00', ...
     if (typeof input === 'string' && chroma.valid(input.trim())) {
-        return mode === 'chroma' ? chroma(input.trim()) : chroma(input.trim()).hex()
+        return chroma(input.trim()).hex()
     }
 
     // Case 3 : A colors string. ex : 'fff, 000', '#F00, rgb(0,255,0), blue, #00F', ...
@@ -60,7 +59,7 @@ function sanitizeInput(input, mode = 'hex') {
 
         const validColors = colors.filter(color => color && chroma.valid(color))
 
-        return validColors.map(color => sanitizeInput(color, mode))
+        return validColors.map(color => sanitizeInput(color))
     }
 
     // Case 4 : An array containing any of the above, can be mixed
@@ -68,7 +67,7 @@ function sanitizeInput(input, mode = 'hex') {
         const flatArray = []
 
         input.forEach(color => {
-            const sanitizedColor = sanitizeInput(color, mode)
+            const sanitizedColor = sanitizeInput(color)
 
             if (Array.isArray(sanitizedColor)) {
                 flatArray.push(...sanitizedColor)
@@ -115,7 +114,7 @@ function adjustForColorBlindness(palette) {
     // 5. Eventually recurse the process until the palette is fixed
     // 6. Return the fixed palette
 
-    palette = sanitizeInput(palette, 'hex')
+    palette = sanitizeInput(palette)
     const types = ['protanopia', 'deuteranopia', 'tritanopia']
     const adjustedPalettes = types.map(type => palette.map(color => blinder[type](color)))
 
@@ -180,7 +179,7 @@ function adjustForColorBlindness(palette) {
  * @returns {Array} - An array containing the original color and the color blindness simulations (protanopia, deuteranopia, tritanopia, and achromatopsia).
  */
 function simulateColorBlindness(color) {
-    const normalColor = sanitizeInput(color, 'hex')
+    const normalColor = sanitizeInput(color)
     const cb = [normalColor]
     const protanopia = blinder.protanopia(normalColor)
     const deuteranopia = blinder.deuteranopia(normalColor)
@@ -192,27 +191,13 @@ function simulateColorBlindness(color) {
 }
 
 /**
- * Beautifies a palette by applying a bezier scale and correcting lightness.
- *
- * @param {Array} palette - The palette to be beautified.
- * @returns {Array} - The beautified palette.
- */
-function beautifyPalette(palette) {
-    palette = sanitizeInput(palette, 'hex')
-    const bezier = chroma.bezier(palette)
-    const bezierColors = bezier.scale().correctLightness().colors(palette.length)
-
-    return bezierColors
-}
-
-/**
  * Returns a golden color based on the input color.
  *
  * @param {string} color - The input color in any valid format (hex, rgb, etc.).
  * @returns {string} - The golden color in hex format.
  */
 function getGoldenColor(color) {
-    color = sanitizeInput(color, 'hex')
+    color = sanitizeInput(color)
     const goldenRatio = 0.618033988749895
     const hue = chroma(color).hsl()[0]
     const hueGolden = (hue + (goldenRatio / 360)) % 360
@@ -257,7 +242,7 @@ function generateGreyscale(start, end, steps) {
  */
 function generateHues(palette, numColors, cbf = false) {
     if (numColors < 1) return []
-    palette = sanitizeInput(palette, 'hex')
+    palette = sanitizeInput(palette)
     let colors = []
     const hues = []
     const length = Math.floor(numColors / palette.length)
@@ -295,7 +280,14 @@ function generateHues(palette, numColors, cbf = false) {
  */
 function generateHuesFromColor(color, numColors, cbf = false) {
     if (numColors < 1) return []
-    const baseColor = sanitizeInput(color, 'chroma')
+
+    color = sanitizeInput(color)
+    let baseColor
+    if (typeof color === 'string') {
+        baseColor = chroma(color)
+    } else if (Array.isArray(color)) {
+        baseColor = chroma(color[0])
+    }
     let colors = [baseColor.hex()]
 
     for (let i = 1; i < numColors; i++) {
@@ -321,7 +313,7 @@ function generateHuesFromColor(color, numColors, cbf = false) {
 function generateComplementaries(palette, numColors, cbf = false) {
     if (numColors < 1) return []
 
-    palette = sanitizeInput(palette, 'hex')
+    palette = sanitizeInput(palette)
     let colors = []
     const generatedColors = []
     const length = Math.floor(numColors / palette.length)
@@ -338,7 +330,7 @@ function generateComplementaries(palette, numColors, cbf = false) {
 
     colors = [...new Set(colors)]
 
-    if (colors.length > size) {
+    if (colors.length > numColors) {
         colors = colors.slice(0, numColors)
     }
 
@@ -360,7 +352,13 @@ function generateComplementaries(palette, numColors, cbf = false) {
 function generatePaletteFromColor(color, numColors, cbf = false) {
     if (numColors < 1) return []
 
-    const baseColor = sanitizeInput(color, 'chroma')
+    color = sanitizeInput(color)
+    let baseColor
+    if (typeof color === 'string') {
+        baseColor = chroma(color)
+    } else if (Array.isArray(color)) {
+        baseColor = chroma(color[0])
+    }
     let colors = [baseColor.hex()]
     const complementaryColor = baseColor.set('hsl.h', '+180')
     colors.push(complementaryColor.hex())
@@ -394,17 +392,16 @@ function generatePaletteFromColor(color, numColors, cbf = false) {
  * @param {number} [numColors=10] - The number of colors to generate in the palette. Default is 10.
  * @param {boolean} [cbf=false] - Whether to adjust the colors for color blindness. Default is false.
  * @param {boolean} [golden=false] - Whether to apply the golden ratio to the colors. Default is false.
- * @param {boolean} [beautify=false] - Whether to beautify the colors using bezier interpolation. Default is false.
  * @param {boolean} [grey=false] - Whether to add greyscale colors to the palette if it has less colors than numColors once generated. Default is false.
  * @returns {Array} - The generated color palette.
  */
-function palex(input, type, numColors = 10, cbf = false, golden = false, beautify = false, grey = false) {
+function palex(input, type, numColors = 10, cbf = false, golden = false, grey = false) {
     if (numColors < 1) {
         return []
     }
 
     let palette = []
-    
+
     switch (type) {
         case 'brewer':
             palette = generatePaletteFromBrewer(input, numColors)
@@ -429,10 +426,6 @@ function palex(input, type, numColors = 10, cbf = false, golden = false, beautif
         palette = palette.map(color => getGoldenColor(color))
     }
 
-    if (beautify) {
-        palette = beautifyPalette(palette)
-    }
-
     if (grey) {
         if (palette.length < numColors) {
             const numGreyscaleColors = numColors - colors.length
@@ -454,13 +447,11 @@ export {
     generatePaletteFromBrewer,
     adjustForColorBlindness,
     simulateColorBlindness,
-    beautifyPalette,
     getGoldenColor,
     generateGreyscale,
     generateHues,
     generateHuesFromColor,
     generateComplementaries,
-    generatePaletteFromColor
+    generatePaletteFromColor,
+    palex
 }
-
-export default palex

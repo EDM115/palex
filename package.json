@@ -35,8 +35,10 @@
     "/README.md"
   ],
   "scripts": {
-    "build": "rollup -c",
-    "test": "vite"
+    "build": "rimraf dist && rollup -c",
+    "test": "vite",
+    "test-build": "rimraf test/dist && vite build --outDir test/dist",
+    "test-preview": "cd test && vite preview"
   },
   "repository": {
     "type": "git",
@@ -64,6 +66,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@vitejs/plugin-vue": "^5.0.3",
     "cross-env": "^7.0.3",
+    "rimraf": "^5.0.5",
     "rollup": "^4.10.0",
     "rollup-plugin-visualizer": "^5.12.0",
     "vite": "^5.0.12",
