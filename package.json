@@ -27,11 +27,10 @@
       "url": "https://t.me/EDM115bots/698"
     }
   ],
-  "main": "dist/palex.cjs.js",
-  "module": "dist/palex.esm.js",
+  "main": "dist/palex.cjs",
+  "module": "dist/palex.js",
   "files": [
     "/dist",
-    "/src",
     "/package.json",
     "/README.md"
   ],
