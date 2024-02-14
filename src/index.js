@@ -282,7 +282,7 @@ function generateHuesFromColor(color, numColors, cbf = false) {
     if (numColors < 1) return []
 
     color = sanitizeInput(color)
-    let baseColor
+    let baseColor = ''
     if (typeof color === 'string') {
         baseColor = chroma(color)
     } else if (Array.isArray(color)) {
@@ -353,7 +353,7 @@ function generatePaletteFromColor(color, numColors, cbf = false) {
     if (numColors < 1) return []
 
     color = sanitizeInput(color)
-    let baseColor
+    let baseColor = ''
     if (typeof color === 'string') {
         baseColor = chroma(color)
     } else if (Array.isArray(color)) {
