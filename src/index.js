@@ -85,7 +85,7 @@ function sanitizeInput(input) {
 /**
  * Generates a palette of colors from a Brewer palette.
  *
- * @param {string} input - The input Brewer palette.
+ * @param {string} input - The input Brewer palette. See https://loading.io/color/feature/
  * @param {number} numColors - The number of colors to generate.
  * @returns {Array} - The generated palette of colors.
  */
@@ -100,7 +100,7 @@ function generatePaletteFromBrewer(input, numColors) {
 }
 
 /**
- * Adjusts a palette of colors for color blindness. It works by simulating the three types of color blindness (protanopia, deuteranopia, and tritanopia) using the 'blinder' library. The function compares all the colors in each simulated palette and shifts one of them to a closer but not similar color if they are too similar. This process is repeated for each simulated palette until they are "fixed". The function then computes the three fixed palettes into a single palette by selecting the best color for each index. This process can be recursively applied until the palette is fully adjusted.
+ * Adjusts a palette of colors for color blindness. It works by simulating the three types of color blindness (protanopia, deuteranopia, and tritanopia) using the 'color-blind' library. The function compares all the colors in each simulated palette and shifts one of them to a closer but not similar color if they are too similar. This process is repeated for each simulated palette until they are "fixed". The function then computes the three fixed palettes into a single palette by selecting the best color for each index. This process can be recursively applied until the palette is fully adjusted.
  *
  * @param {Array} palette - The palette of colors to adjust.
  * @returns {Array} - The adjusted palette of colors.
@@ -108,7 +108,7 @@ function generatePaletteFromBrewer(input, numColors) {
 function adjustForColorBlindness(palette) {
     // How it works :
     // 1. Grab the palette (array of hex values)
-    // 2. Make 3 new arrays, each of them mapping the original palette to a new one, simulating the 3 types of color blindness (uses blinder)
+    // 2. Make 3 new arrays, each of them mapping the original palette to a new one, simulating the 3 types of color blindness (uses color-blind)
     // 3. For each array, compare all the colors to each other. If 2 colors are too similar, shift one of them to a the closer but not similar color. Repeat the process for each array until the said array is "fixed"
     // 4. Return 1 array that computes the 3 other ones into a single one, by taking the best color for each index
     // 5. Eventually recurse the process until the palette is fixed
@@ -310,7 +310,7 @@ function generateHuesFromColor(color, numColors, cbf = false) {
  * @param {boolean} [cbf=false] - Whether to adjust the colors for color blindness.
  * @returns {string[]} The generated palette of complementary colors.
  */
-function generateComplementaries(palette, numColors, cbf = false) {
+function generateComplementary(palette, numColors, cbf = false) {
     if (numColors < 1) return []
 
     palette = sanitizeInput(palette)
@@ -388,18 +388,19 @@ function generatePaletteFromColor(color, numColors, cbf = false) {
  * Generates a color palette based on the given input and type.
  *
  * @param {string} input - The input for generating the color palette. 
- * @param {string} type - The type of color palette to generate. Can be one of: 'brewer', 'hues', 'complementary', 'color', 'greyscale'. Returns an empty array if the type is not recognized.
+ * @param {string} type - The type of color palette to generate. Can be one of: 'brewer', 'hues', 'complementary', 'color', 'greyscale'.
  * @param {number} [numColors=10] - The number of colors to generate in the palette. Default is 10.
  * @param {boolean} [cbf=false] - Whether to adjust the colors for color blindness. Default is false.
  * @param {boolean} [golden=false] - Whether to apply the golden ratio to the colors. Default is false.
  * @param {boolean} [grey=false] - Whether to add greyscale colors to the palette if it has less colors than numColors once generated. Default is false.
- * @returns {Array} - The generated color palette.
+ * @returns {Array} - The generated color palette, or an empty array if the type is not recognized.
  */
 function palex(input, type, numColors = 10, cbf = false, golden = false, grey = false) {
     if (numColors < 1) {
         return []
     }
 
+    input = sanitizeInput(input)
     let palette = []
 
     switch (type) {
@@ -410,7 +411,7 @@ function palex(input, type, numColors = 10, cbf = false, golden = false, grey = 
             palette = generateHues(input, numColors, cbf)
             break
         case 'complementary':
-            palette = generateComplementaries(input, numColors, cbf)
+            palette = generateComplementary(input, numColors, cbf)
             break
         case 'color':
             palette = generatePaletteFromColor(input, numColors, cbf)
@@ -451,7 +452,7 @@ export {
     generateGreyscale,
     generateHues,
     generateHuesFromColor,
-    generateComplementaries,
+    generateComplementary,
     generatePaletteFromColor,
     palex
 }

@@ -48,7 +48,7 @@ function sanitizeInput(input) {
 
   // Case 3 : A colors string. ex : 'fff, 000', '#F00, rgb(0,255,0), blue, #00F', ...
   if (typeof input === 'string' && input.includes(',')) {
-    var _colors = [];
+    var colors = [];
     var buffer = '';
     var inParentheses = false;
     for (var i = 0; i < input.length; i++) {
@@ -61,7 +61,7 @@ function sanitizeInput(input) {
           if (trimmedBuffer.startsWith('"') && trimmedBuffer.endsWith('"')) {
             trimmedBuffer = trimmedBuffer.substring(1, trimmedBuffer.length - 1);
           }
-          _colors.push(trimmedBuffer);
+          colors.push(trimmedBuffer);
           buffer = '';
         }
       } else {
@@ -73,9 +73,9 @@ function sanitizeInput(input) {
       if (_trimmedBuffer.startsWith('"') && _trimmedBuffer.endsWith('"')) {
         _trimmedBuffer = _trimmedBuffer.substring(1, _trimmedBuffer.length - 1);
       }
-      _colors.push(_trimmedBuffer);
+      colors.push(_trimmedBuffer);
     }
-    var validColors = _colors.filter(function (color) {
+    var validColors = colors.filter(function (color) {
       return color && chroma.valid(color);
     });
     return validColors.map(function (color) {
@@ -102,7 +102,7 @@ function sanitizeInput(input) {
 /**
  * Generates a palette of colors from a Brewer palette.
  *
- * @param {string} input - The input Brewer palette.
+ * @param {string} input - The input Brewer palette. See https://loading.io/color/feature/
  * @param {number} numColors - The number of colors to generate.
  * @returns {Array} - The generated palette of colors.
  */
@@ -114,7 +114,7 @@ function generatePaletteFromBrewer(input, numColors) {
 }
 
 /**
- * Adjusts a palette of colors for color blindness. It works by simulating the three types of color blindness (protanopia, deuteranopia, and tritanopia) using the 'blinder' library. The function compares all the colors in each simulated palette and shifts one of them to a closer but not similar color if they are too similar. This process is repeated for each simulated palette until they are "fixed". The function then computes the three fixed palettes into a single palette by selecting the best color for each index. This process can be recursively applied until the palette is fully adjusted.
+ * Adjusts a palette of colors for color blindness. It works by simulating the three types of color blindness (protanopia, deuteranopia, and tritanopia) using the 'color-blind' library. The function compares all the colors in each simulated palette and shifts one of them to a closer but not similar color if they are too similar. This process is repeated for each simulated palette until they are "fixed". The function then computes the three fixed palettes into a single palette by selecting the best color for each index. This process can be recursively applied until the palette is fully adjusted.
  *
  * @param {Array} palette - The palette of colors to adjust.
  * @returns {Array} - The adjusted palette of colors.
@@ -122,7 +122,7 @@ function generatePaletteFromBrewer(input, numColors) {
 function adjustForColorBlindness(palette) {
   // How it works :
   // 1. Grab the palette (array of hex values)
-  // 2. Make 3 new arrays, each of them mapping the original palette to a new one, simulating the 3 types of color blindness (uses blinder)
+  // 2. Make 3 new arrays, each of them mapping the original palette to a new one, simulating the 3 types of color blindness (uses color-blind)
   // 3. For each array, compare all the colors to each other. If 2 colors are too similar, shift one of them to a the closer but not similar color. Repeat the process for each array until the said array is "fixed"
   // 4. Return 1 array that computes the 3 other ones into a single one, by taking the best color for each index
   // 5. Eventually recurse the process until the palette is fixed
@@ -165,12 +165,12 @@ function adjustForColorBlindness(palette) {
     }
     return bestMatch;
   };
-  var fixedPalettes = adjustedPalettes.map(function (palette, paletteIndex) {
-    return palette.map(function (color, index) {
-      if (palette.some(function (otherColor, otherIndex) {
+  var fixedPalettes = adjustedPalettes.map(function (adjustedPalette) {
+    return adjustedPalette.map(function (color, index) {
+      if (adjustedPalette.some(function (otherColor, otherIndex) {
         return index !== otherIndex && isColorTooSimilar(color, otherColor);
       })) {
-        return adjustColor(color, palette);
+        return adjustColor(color, adjustedPalette);
       }
       return color; // Return original if not too similar
     });
@@ -178,8 +178,8 @@ function adjustForColorBlindness(palette) {
 
   // Combine the fixed palettes into a single palette by choosing the best color for each index
   var finalPalette = palette.map(function (originalColor, index) {
-    var colorOptions = fixedPalettes.map(function (palette) {
-      return palette[index];
+    var colorOptions = fixedPalettes.map(function (fixedPalette) {
+      return fixedPalette[index];
     });
     var distances = colorOptions.map(function (color) {
       return chroma.deltaE(originalColor, color);
@@ -298,7 +298,7 @@ function generateHuesFromColor(color, numColors) {
   var cbf = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   if (numColors < 1) return [];
   color = sanitizeInput(color);
-  var baseColor;
+  var baseColor = '';
   if (typeof color === 'string') {
     baseColor = chroma(color);
   } else if (Array.isArray(color)) {
@@ -306,8 +306,8 @@ function generateHuesFromColor(color, numColors) {
   }
   var colors = [baseColor.hex()];
   for (var i = 1; i < numColors; i++) {
-    var _color = baseColor.set('hsl.l', '*' + (1 + i / numColors)).saturate(1);
-    colors.push(_color.hex());
+    var colorHue = baseColor.set('hsl.l', "*".concat(1 + i / numColors)).saturate(1);
+    colors.push(colorHue.hex());
   }
   if (cbf) {
     colors = adjustForColorBlindness(colors);
@@ -323,7 +323,7 @@ function generateHuesFromColor(color, numColors) {
  * @param {boolean} [cbf=false] - Whether to adjust the colors for color blindness.
  * @returns {string[]} The generated palette of complementary colors.
  */
-function generateComplementaries(palette, numColors) {
+function generateComplementary(palette, numColors) {
   var cbf = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   if (numColors < 1) return [];
   palette = sanitizeInput(palette);
@@ -363,7 +363,7 @@ function generatePaletteFromColor(color, numColors) {
   var cbf = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   if (numColors < 1) return [];
   color = sanitizeInput(color);
-  var baseColor;
+  var baseColor = '';
   if (typeof color === 'string') {
     baseColor = chroma(color);
   } else if (Array.isArray(color)) {
@@ -393,12 +393,12 @@ function generatePaletteFromColor(color, numColors) {
  * Generates a color palette based on the given input and type.
  *
  * @param {string} input - The input for generating the color palette. 
- * @param {string} type - The type of color palette to generate. Can be one of: 'brewer', 'hues', 'complementary', 'color', 'greyscale'. Returns an empty array if the type is not recognized.
+ * @param {string} type - The type of color palette to generate. Can be one of: 'brewer', 'hues', 'complementary', 'color', 'greyscale'.
  * @param {number} [numColors=10] - The number of colors to generate in the palette. Default is 10.
  * @param {boolean} [cbf=false] - Whether to adjust the colors for color blindness. Default is false.
  * @param {boolean} [golden=false] - Whether to apply the golden ratio to the colors. Default is false.
  * @param {boolean} [grey=false] - Whether to add greyscale colors to the palette if it has less colors than numColors once generated. Default is false.
- * @returns {Array} - The generated color palette.
+ * @returns {Array} - The generated color palette, or an empty array if the type is not recognized.
  */
 function palex(input, type) {
   var numColors = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 10;
@@ -408,6 +408,7 @@ function palex(input, type) {
   if (numColors < 1) {
     return [];
   }
+  input = sanitizeInput(input);
   var palette = [];
   switch (type) {
     case 'brewer':
@@ -417,7 +418,7 @@ function palex(input, type) {
       palette = generateHues(input, numColors, cbf);
       break;
     case 'complementary':
-      palette = generateComplementaries(input, numColors, cbf);
+      palette = generateComplementary(input, numColors, cbf);
       break;
     case 'color':
       palette = generatePaletteFromColor(input, numColors, cbf);
@@ -435,7 +436,7 @@ function palex(input, type) {
   }
   if (grey) {
     if (palette.length < numColors) {
-      var numGreyscaleColors = numColors - colors.length;
+      var numGreyscaleColors = numColors - palette.length;
       var start = 0;
       var end = numGreyscaleColors - 1;
       var steps = numGreyscaleColors;
@@ -446,4 +447,4 @@ function palex(input, type) {
   return palette;
 }
 
-export { adjustForColorBlindness, generateComplementaries, generateGreyscale, generateHues, generateHuesFromColor, generatePaletteFromBrewer, generatePaletteFromColor, getGoldenColor, palex, sanitizeInput, simulateColorBlindness };
+export { adjustForColorBlindness, generateComplementary, generateGreyscale, generateHues, generateHuesFromColor, generatePaletteFromBrewer, generatePaletteFromColor, getGoldenColor, palex, sanitizeInput, simulateColorBlindness };
