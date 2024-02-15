@@ -44,21 +44,31 @@ jobs:
         if: github.event_name == 'release'
         run: |
           RELEASE_VERSION=$(echo ${{ github.event.release.tag_name }} | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+')
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
           if [ "$RELEASE_VERSION" != "" ]; then
             if ! npm view $(node -p "require('./package.json').name")@$RELEASE_VERSION version; then
-              echo "Release version does not exist, setting version in package.json."
-              npm version $RELEASE_VERSION --no-git-tag-version
+              if [ "v$CURRENT_VERSION" != "$RELEASE_VERSION" ]; then
+                echo "Release version does not exist in registry and differs from package.json, setting it."
+                npm version $RELEASE_VERSION --no-git-tag-version
+                git config --global user.email "git@edm115.eu.org"
+                git config --global user.name "EDM115"
+                git commit -am "Update version to $RELEASE_VERSION"
+                git push
+              else
+                echo "Release version matches package.json but not in registry, safe to publish."
+              fi
             else
-              echo "Release version exists, proceeding without change."
+              echo "Release version exists in registry, bumping version."
+              npm version patch -m "Bump version to %s due to existing version in registry"
+              git push --follow-tags
             fi
           else
-            echo "Release tag does not follow semantic versioning. Checking current package.json version."
-            if ! npm view $(node -p "require('./package.json').name")@$(node -p "require('./package.json').version") version; then
-              echo "Current version does not exist, safe to publish."
+            echo "Release tag does not follow semantic versioning, reverting to manual trigger logic."
+            # Fallback to manual trigger logic if release tag is not valid
+            if ! npm view $(node -p "require('./package.json').name")@"v$CURRENT_VERSION" version; then
+              echo "Current package.json version does not exist in registry, safe to publish."
             else
-              echo "Current version exists, bumping version."
-              git config --global user.email "git@edm115.eu.org"
-              git config --global user.name "EDM115"
+              echo "Current package.json version exists in registry, bumping version."
               npm version patch -m "Bump version to %s due to existing version in registry"
               git push --follow-tags
             fi
