@@ -14,7 +14,7 @@
 import {
     generatePaletteFromBrewer,
     generateHuesFromColor,
-    generateComplementaries,
+    generateComplementary,
     generatePaletteFromColor,
     generateGreyscale,
     adjustForColorBlindness,
@@ -33,7 +33,7 @@ export default {
                 { title: 'Brewer Palette - Set2', colors: generatePaletteFromBrewer('Set2', 10) },
                 { title: 'Brewer Palette - Accent', colors: generatePaletteFromBrewer('Accent', 10) },
                 { title: 'Hues from #f55', colors: generateHuesFromColor(['#f55'], 10) },
-                { title: 'Complementary Colors of #50FA7B', colors: generateComplementaries(['#50FA7B'], 10) },
+                { title: 'Complementary Colors of #50FA7B', colors: generateComplementary(['#50FA7B'], 10) },
                 { title: 'Palette from Color #BD93F9', colors: generatePaletteFromColor('#BD93F9', 10) },
                 { title: 'Colorblind vision of #BD93F9', colors: simulateColorBlindness('#BD93F9') },
                 { title: 'Adjusted for Color Blindness : Palette from Color #BD93F9', colors: adjustForColorBlindness(generatePaletteFromColor('#BD93F9', 10)) },

@@ -16,7 +16,7 @@
     },
     {
       "type": "crypto",
-      "url": "https://edm115.shadd.eu.org/"
+      "url": "https://walad.link/edm115"
     },
     {
       "type": "github",
@@ -36,9 +36,7 @@
   ],
   "scripts": {
     "build": "rimraf dist && rollup -c",
-    "test": "vite",
-    "test-build": "rimraf test/dist && vite build --outDir test/dist",
-    "test-preview": "cd test && vite preview"
+    "test": "vite"
   },
   "repository": {
     "type": "git",
