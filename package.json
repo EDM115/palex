@@ -36,6 +36,8 @@
   ],
   "scripts": {
     "build": "rimraf dist && rollup -c",
+    "publish:npm": "npm publish --registry https://registry.npmjs.org/",
+    "publish:github": "npm publish --registry https://npm.pkg.github.com/",
     "test": "vite"
   },
   "repository": {
